@@ -1,5 +1,4 @@
 
-
 %%
 % Align sample frequencies
 
@@ -79,13 +78,6 @@ evoked = (postScore2-preScore2)';
 
 % calculate correlation between cells
 corrMatrix = corr(evoked');
-corrVector = corrMatrix(:);
-figure
-title('Noise Correlation Across Cells')
-imagesc(corrMatrix)
-xlabel('Cell Number')
-ylabel('Cell Number')
-colorbar
 
 % convenience downsample for now to 100
 orientation = bData.orientation;
@@ -94,31 +86,51 @@ orientation = orientation(1:100);
 contrast = bData.contrast;
 contrast = contrast(1:100);
 
-s{1} = orientation == 90;
-s{2} = orientation == 0;
-s{3} = orientation == 270;
+stim_trials{1} = orientation == 90;
+stim_trials{2} = orientation == 0;
+stim_trials{3} = orientation == 270;
 
-sig{1} = mean(evoked(:,s1),2);
-sig{2} = mean(evoked(:,s2),2);
-sig{3} = mean(evoked(:,s3),2);
+sig = {};
+sig{1} = mean(evoked(:,stim_trials{1}),2);
+sig{2} = mean(evoked(:,stim_trials{2}),2);
+sig{3} = mean(evoked(:,stim_trials{3}),2);
 
 sig = [sig{1}' ; sig{2}' ; sig{3}' ];
 
 sigcorr = corr(sig);
 
-% 
-for i = 1:3
-   ncs{i} = corr(evoked(:,s{i})');
-end
-
-ncs = cell2mat(ncs);
-ncs = reshape(ncs, 11,11,3);
-ncs = mean(ncs, 3);
-
-plot(get_upper(sigcorr), get_upper(ncs), 'o')
-
+sig_normed = sig;
 for i = 1:11
-   sigmat(:,i) = sigmat(:,i)./norm(sigmat(:,i));
+   sig_normed(:,i) = sig(:,i)./norm(sig(:,i));
 end
 
-scatter()
+%
+ncovs = {};
+for i = 1:3
+   ncovs{i} = cov(evoked(:,stim_trials{i})');
+
+end
+
+% 
+ncs = {};
+evecs = {};
+evals = {};
+for i = 1:3
+   ncs{i} = corr(evoked(:,stim_trials{i})');
+   
+   [v,d] = eig(ncs{i});
+   [d,j] = sort(diag(d), 'descend');
+   v = v(:,j);
+   
+   evecs{i} = v;
+   evals{i} = d;
+end
+
+ncs_avg = cell2mat(ncs);
+ncs_avg = reshape(ncs_avg, 11,11,3);
+ncs_avg = mean(ncs_avg, 3);
+
+% Define rank orderings of total correlation in each case
+[~, ranks1] = sort(sum(abs(ncs{1})), 'descend');
+[~, ranks2] = sort(sum(abs(ncs{2})), 'descend');
+[~, ranks3] = sort(sum(abs(ncs{3})), 'descend');
